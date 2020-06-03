@@ -7,3 +7,37 @@ export const isBrowser = () =>
     typeof window === 'object'
     && window instanceof Window
     && 'JSON' in window;
+
+export const traceProperty = (object: object, property: string | symbol) => {
+    let value = object[property];
+    const prop = typeof property === 'string' ? property : property.toString();
+    Object.defineProperty(object, property, {
+        get() {
+            console.trace(`${prop} requested`);
+            return value;
+        },
+        set(newValue) {
+            console.trace(`setting ${prop} to `, newValue);
+            value = newValue;
+        },
+    })
+};
+
+export const getWeekday = () => {
+    switch (new Date().getDay()) {
+        case 0:
+            return 'Sunday';
+        case 1:
+            return 'Monday';
+        case 2:
+            return 'Tuesday';
+        case 3:
+            return 'Wednesday';
+        case 4:
+            return 'Thursday';
+        case 5:
+            return 'Friday';
+        case 6:
+            return 'Saturday';
+    }
+}
