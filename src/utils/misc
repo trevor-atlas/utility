@@ -41,3 +41,25 @@ export const getWeekday = () => {
             return 'Saturday';
     }
 }
+
+
+const isNumber = (x: unknown): x is number => typeof x === "number";
+const isString = (x: unknown): x is string => typeof x === "string";
+const isBoolean = (x: unknown): x is boolean => typeof x === "boolean";
+
+const createValidator = <X>(test: (v: unknown) => v is X) => (value: unknown, fallback: X): X =>
+  test(value) ? value : fallback;
+
+const validateString = createValidator(isString);
+const validateNumber = createValidator(isNumber);
+const validateBoolean = createValidator(isBoolean);
+
+export function isDefined<T>(x: Maybe<T>): x is T {
+  return x !== undefined && x !== null;
+}
+
+export function isUndefined<T>(x: Maybe<T>): x is void {
+  return !isDefined(x);
+}
+
+
