@@ -15,3 +15,38 @@ export const pipe = <T>(
 
 export const compose = <R>(fn1: (a: R) => R, ...fns: Array<(a: R) => R>) =>
     fns.reduce((prevFn, nextFn) => value => prevFn(nextFn(value)), fn1);
+
+    export function once<T>(fn: (...args: any[]) => T | Promise<T>) {
+      let called = false;
+      let result: T;
+      return async (...args: any[]) => {
+        if (!called) {
+          result = await fn(...args);
+          called = true;
+        }
+        return result;
+      };
+    }
+    export function throttle(fn: Function, args?: any[], wait: number = 100) {
+      let inThrottle: boolean;
+      let lastFn: ReturnType<typeof setTimeout>;
+      let lastTime: number;
+
+      // @ts-ignore
+      const context = this;
+      return  () => {
+        if (!inThrottle) {
+          fn.apply(context, args);
+          lastTime = Date.now();
+          inThrottle = true;
+        } else {
+          clearTimeout(lastFn);
+          lastFn = setTimeout(() => {
+            if (Date.now() - lastTime >= wait) {
+              fn.apply(context, args);
+              lastTime = Date.now();
+            }
+          }, Math.max(wait - (Date.now() - lastTime), 0));
+        }
+      };
+    };

@@ -1,5 +1,5 @@
 import { Nullable } from '../types/common';
-import { isSome } from './common';
+import { isEmpty, isNone, isSome } from './common';
 
 export function $<ElementType extends HTMLElement>(
   selector: string
@@ -12,8 +12,11 @@ export function $<ElementType extends HTMLElement>(
   return maybeEl;
 }
 
-export function $$<ElementType extends HTMLElement>(selector: string): ElementType[] {
+export function $$<ElementType extends Element>(selector: string): ElementType[] {
   const query = document.querySelectorAll<ElementType>(selector);
+  if (isEmpty(query)) {
+    return [];
+  }
   return [...query];
 }
 
@@ -66,7 +69,7 @@ export function createJSLoader() {
       return;
     }
     const ref = window.document.getElementsByTagName('script')[0];
-    const script = window.document.createElement('script');
+    var script = window.document.createElement('script');
     script.src = src;
     script.async = true;
     if (!ref.parentNode) {
@@ -89,11 +92,3 @@ export function writeToClipboard(text: string) {
   }
   navigator.clipboard.writeText(text);
 }
-
-export const preloadImage = (src: string): Promise<HTMLImageElement> =>
-  new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = img.onabort = () => reject(src);
-    img.src = src;
-  });

@@ -1,4 +1,4 @@
-export function once<T>(fn: (...args: any[]) => T | Promise<T>) {
+export function once<T>(fn: (...args: any[]) => T) {
   let called = false;
   let result: T;
   return async (...args: any[]) => {

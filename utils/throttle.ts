@@ -3,9 +3,8 @@ export function throttle(fn: Function, args?: any[], wait: number = 100) {
   let lastFn: ReturnType<typeof setTimeout>;
   let lastTime: number;
 
-  // @ts-ignore
   const context = this;
-  return  () => {
+  return function () {
     if (!inThrottle) {
       fn.apply(context, args);
       lastTime = Date.now();

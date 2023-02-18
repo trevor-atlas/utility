@@ -1,15 +1,21 @@
 {
-  "name": "weak",
+  "name": "@trevoratlas/utilities",
   "version": "1.0.0",
   "description": "A set of useful tools and utilities for any javascript/typescript project",
-  "main": "index.js",
+  "main": "index.ts",
+  "types": "index.ts",
+  "type": "module",
   "scripts": {
     "test": "jest"
   },
   "keywords": ["typescript"],
   "author": "Trevor Atlas",
   "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "devDependencies": {
+    "prettier": "latest",
     "@types/jest": "^29.4.0",
     "jest": "^29.4.3",
     "ts-jest": "^29.0.5",
