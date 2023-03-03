@@ -1,5 +1,5 @@
-import { Nullable } from '../types/common';
-import { isNone } from './common';
+import { None, Nullable } from '../types/common';
+import { isNone, isSome } from './common';
 
 export function setLocalStorageValue<T>(key: string, value: T) {
   try {
@@ -26,15 +26,14 @@ export function removeLocalStorageValue(key: string) {
   localStorage.removeItem(key);
 }
 
-interface SmartCache<Value, CacheValue> {
-  get: () => Nullable<CacheValue>;
-  set: (value: Value) => void;
-  clear: () => void;
-  isStaleOrInvalid: () => boolean;
-  isPrimed: () => boolean;
+interface SmartCache<Value> {
+  get(): Promise<Nullable<Timestamped<Value>>>;
+  set: (value: Value) => Promise<void>;
+  isStaleOrInvalid: () => Promise<boolean>;
+  isPrimed: () => Promise<boolean>;
 }
 
-type Cache<Value> = { value: Value; lastUpdated: number };
+type Timestamped<Value> = { value: Value; lastUpdated: number };
 
 /**
  * Creates a cache object that can be used to store and retrieve values from a storage medium
@@ -56,42 +55,49 @@ type Cache<Value> = { value: Value; lastUpdated: number };
  *
  */
 export function createCache<Value>(
-  key: string,
-  writer: (key: string, value: Cache<Value>) => void,
-  reader: (key: string) => Nullable<Cache<Value>>,
-  validator: (value: Nullable<Cache<Value>>) => boolean
-): SmartCache<Value, Cache<Value>> {
-  const isStaleOrInvalid = () => {
-    const cached = getLocalStorageValue<Cache<Value>>(key);
+  writer: (value: Timestamped<Value>) => Promise<void>,
+  reader: () => Promise<Nullable<Timestamped<Value>>>,
+  validator: (value: Nullable<Timestamped<Value>>) => Promise<boolean>
+): SmartCache<Value> {
+  const isStaleOrInvalid = async () => {
+    const cached = await reader();
     return isNone(cached) || validator(cached);
   };
   return {
-    get: () => reader(key),
-    set: (value: Value) => writer(key, { value, lastUpdated: Date.now() }),
-    clear: () => removeLocalStorageValue(key),
+    get: async () => reader(),
+    set: async (value: Value) => {
+      await writer({ value, lastUpdated: Date.now() });
+    },
     isStaleOrInvalid,
-    isPrimed: () => !isStaleOrInvalid(),
+    isPrimed: async () => {
+      const res = await isStaleOrInvalid();
+      return res;
+    },
   };
 }
 
-interface ReadonlyCache<Value, Transformed> {
-  get: () => Nullable<Value | Transformed>;
+interface ReadonlyCache<V> {
+  get(): Promise<Nullable<V>>;
 }
 
-export function createReadonlyCache<Value, Transformed>(
-  key: string,
-  reader: (key: string) => Nullable<Value>,
-  transformer?: (value: Value) => Transformed
-): ReadonlyCache<Value, Transformed> {
+export function createReadonlyCache<Value>(
+  reader: () => Promise<Nullable<Value>>
+): ReadonlyCache<Value> {
   return {
-    get: () => {
-      const value = reader(key);
-      if (isNone(value)) {
-        return null;
-      }
-      if (isNone(transformer)) {
-        return value;
-      }
+    async get() {
+      const value = await reader();
+      return value;
+    },
+  };
+}
+
+export function transformCache<T, U>(
+  cache: { get(): Promise<T> },
+  transformer: (value: T) => U
+) {
+  return {
+    async get() {
+      const value = await cache.get();
       return transformer(value);
     },
   };
