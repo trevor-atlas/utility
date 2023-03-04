@@ -10,30 +10,7 @@ import { None, Nullable } from '../types/common';
  * type(new Number(2)); // -> 'number'
  * ``` */
 export function kind<T>(t: T) {
-  switch (Object.prototype.toString.call(t).slice(8, -1).toLowerCase()) {
-    case 'string':
-      return 'string';
-    case 'number':
-      return 'number';
-    case 'boolean':
-      return 'boolean';
-    case 'bigint':
-      return 'bigint';
-    case 'symbol':
-      return 'symbol';
-    case 'function':
-      return 'function';
-    case 'array':
-      return 'array';
-    case 'regexp':
-      return 'regexp';
-    case 'date':
-      return 'date';
-    case 'error':
-      return 'error';
-      default:
-        throw new Error('Unknown type');
-  }
+  return Object.prototype.toString.call(t).slice(8, -1).toLowerCase();
 }
 
 export function isSome<T>(value: Nullable<T>): value is T {
@@ -49,7 +26,7 @@ export const isString = (x: unknown): x is string => kind(x) === 'string';
 export const isBoolean = (x: unknown): x is boolean => kind(x) === 'boolean';
 export const isDate = (x: unknown): x is Date => kind(x) === 'date';
 
-export const isFilled= <T>(array: Nullable<T[]>): array is T[] => {
+export const isFilled = <T>(array: Nullable<T[]>): array is T[] => {
   if (isNone(array)) {
     return false;
   }
