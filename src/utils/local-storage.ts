@@ -35,6 +35,12 @@ interface SmartCache<Value> {
 
 type Timestamped<Value> = { value: Value; lastUpdated: number };
 
+interface CacheOptions<Value> {
+  writer: (value: Timestamped<Value>) => Promise<void>;
+  reader: () => Promise<Nullable<Timestamped<Value>>>;
+  validator: (value: Nullable<Timestamped<Value>>) => Promise<boolean>;
+}
+
 /**
  * Creates a cache object that can be used to store and retrieve values from a storage medium
  * such as local storage, session storage, or a database (though it's not async).
@@ -54,24 +60,26 @@ type Timestamped<Value> = { value: Value; lastUpdated: number };
  * cache.get(); // -> { value: 'value', lastUpdated: 123456789 }
  *
  */
-export function createCache<Value>(
-  writer: (value: Timestamped<Value>) => Promise<void>,
-  reader: () => Promise<Nullable<Timestamped<Value>>>,
-  validator: (value: Nullable<Timestamped<Value>>) => Promise<boolean>
-): SmartCache<Value> {
+export function createCache<Value>({
+  reader,
+  writer,
+  validator,
+}: CacheOptions<Value>): SmartCache<Value> {
   const isStaleOrInvalid = async () => {
     const cached = await reader();
     return isNone(cached) || validator(cached);
   };
   return {
-    get: async () => reader(),
+    get: async () => {
+      return reader();
+    },
     set: async (value: Value) => {
       await writer({ value, lastUpdated: Date.now() });
     },
     isStaleOrInvalid,
     isPrimed: async () => {
       const res = await isStaleOrInvalid();
-      return res;
+      return !res;
     },
   };
 }
