@@ -1,6 +1,6 @@
 {
   "name": "@trevoratlas/utilities",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "A set of useful tools and utilities for any javascript/typescript project",
   "main": "src/index.ts",
   "types": "src/index.ts",
