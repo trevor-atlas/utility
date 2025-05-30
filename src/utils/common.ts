@@ -1,4 +1,5 @@
 import { None, Nullable } from '../types/common';
+import { tryCatch } from './tryCatch';
 
 /**
  * typeof without all the footguns
@@ -79,3 +80,50 @@ export const isWebWorker =
   typeof self === 'object' &&
   self.constructor &&
   self.constructor.name === 'DedicatedWorkerGlobalScope';
+
+
+export function parseNumber(value: Nullable<string>): Nullable<number> {
+  if (isNone(value) || value.trim() === '') {
+    return null;
+  }
+  return tryCatch(() => Number(value)).match(
+    (v) => v,
+    () => null
+  );
+}
+
+/** forces exhaustive checking in a switch statement (you will get a type error if you don't check every case) and throws a traceable error if it ever actually gets called at runtime.
+ * Stick it in the default case of a switch statement to make sure you've covered all cases.  */
+export function assertNever(val: never, message: string) {
+  return new Error(
+    `unexpected 'never' case encountered in switch statement over ${message} for value: ${JSON.stringify(
+      val,
+      null,
+      2
+    )}`
+  );
+}
+
+export function noop() {}
+
+export function identity<T>(value: T): T {
+  return value;
+}
+
+export function none(): None {
+  return null;
+}
+
+export function parseJSON<T>(value: string): Nullable<T> {
+  return tryCatch<T>(() => JSON.parse(value)).match(
+    (v) => v,
+    () => null
+  );
+}
+
+export function stringify(value: unknown): Nullable<string> {
+  return tryCatch(() => JSON.stringify(value, null, 2)).match(
+    (v) => v,
+    () => null
+  );
+}
