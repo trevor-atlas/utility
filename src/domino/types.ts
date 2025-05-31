@@ -1,19 +1,6 @@
 export type DominoValues = Record<string, unknown>;
 
 /**
- * @description A computed field is a cached field that is computed from the current state of the Domino.
- * The computed field is not stored in the Domino, but is computed on the fly when the Domino is updated.  */
-export type ComputedField<T extends DominoValues> = {
-  compute: (args: {
-    defaults: T;
-    values: T;
-    mutations: Partial<T>;
-    isModified: boolean;
-  }) => T[keyof T];
-  hash: string;
-};
-
-/**
  * @description The internal representation of a Domino object.
  * A Domino is an immutable, reusable and flexible abstraction
  * for managing complex state in javascript applications.
@@ -29,7 +16,6 @@ export type DominoInternals<T extends DominoValues> = {
   /** * The current final values of the Domino.  */
   values: T;
   /** * fields that are computed from the current state of the Domino.  */
-  computedFields: Record<keyof T, ComputedField<T>>;
   isModified: boolean;
   /** Update multiple fields at once */
   update: (fields: Partial<T>) => DominoInternals<T>;
@@ -39,22 +25,6 @@ export type DominoInternals<T extends DominoValues> = {
   reset: () => DominoInternals<T>;
   /** Set the default values of the Domino */
   setDefaults: (values: Partial<T>) => DominoInternals<T>;
-  /** Add a computed field to the Domino */
-  addComputedField: <Key extends keyof T>(
-    key: Key,
-    computeFn: (args: {
-      defaults: T;
-      values: T;
-      mutations: Partial<T>;
-      isModified: boolean;
-    }) => T[Key],
-    hashFunction?: (args: {
-      defaults: T;
-      values: T;
-      mutations: Partial<T>;
-      isModified: boolean;
-    }) => string
-  ) => DominoInternals<T> | undefined;
 };
 
 export type DominoStore<T extends DominoValues> = {
@@ -81,19 +51,4 @@ export type PublicDominoMethods<T extends DominoValues> = {
   reset: () => void;
   update: (fields: Partial<T>) => void;
   resetField: (field: keyof T) => void;
-  addComputedField: <Key extends keyof T>(
-    key: Key,
-    computeFn: (args: {
-      defaults: T;
-      values: T;
-      mutations: Partial<T>;
-      isModified: boolean;
-    }) => T[Key],
-    hashFunction?: (args: {
-      defaults: T;
-      values: T;
-      mutations: Partial<T>;
-      isModified: boolean;
-    }) => string
-  ) => void;
 };

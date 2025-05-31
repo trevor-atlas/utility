@@ -1,39 +1,13 @@
-import { cloneOf, entriesOf } from '../utils/object';
-import { ComputedField, DominoInternals, DominoValues } from './types';
-
-function hashPrimitive(arg: unknown): string {
-  switch (typeof arg) {
-    case 'string':
-      return arg;
-    case 'number':
-      return arg.toString();
-    case 'boolean':
-      return arg.toString();
-    case 'undefined':
-      return 'undefined';
-    case 'object':
-      if (arg === null) {
-        return 'null';
-      }
-      return JSON.stringify(arg);
-    default:
-      throw new Error(`Unknown argument type: ${typeof arg}`);
-  }
-}
-
-export function defaultHashFunction(...args: unknown[]): string {
-  if (args.length === 1) {
-    return hashPrimitive(args[0]);
-  }
-  return args.map(hashPrimitive).join('|');
-}
+import { cloneOf } from '../utils/object';
+import { createDominoStore } from './adapters';
+import { DominoValues } from './types';
 
 /**
- * @description Create a new Domino object.
- * @param initialDefaults The default values of the Domino.
- * @param initialMutations The mutations of the Domino.
- * @param initialComputedFields The computed fields of the Domino.
- * @returns A new Domino object.
+ * @description Create a new DominoAPI object.
+ * @param defaults The default values of the DominoAPI.
+ * @param mutations The mutations of the DominoAPI.
+ * @param initialDefaults The initial default values of the DominoAPI.
+ * @returns A new DominoAPI object.
  * @description A Domino's job is to make computing updates easy.
  * A Domino's internal state is made up of defaults, mutations, and computed fields.
  *
@@ -43,115 +17,128 @@ export function defaultHashFunction(...args: unknown[]): string {
  *
  * values are the final values of the Domino, computed from the defaults and mutations.
  *
- * Computed fields are cached and only recomputed when the defaults or mutations change, or when the computed field's hash changes.
- * All methods return new Domino objects, and do not modify the original Domino.
+ * All methods return new DominoAPI objects, and do not modify the original DominoAPI.
  */
-export function createDomino<T extends DominoValues>(
-  initialDefaults: T,
-  initialMutations: Partial<T> = {},
-  initialComputedFields: Record<keyof T, ComputedField<T>> = {} as Record<
-    keyof T,
-    ComputedField<T>
-  >
-): DominoInternals<T> {
-  const defaults = cloneOf(initialDefaults);
-  const mutations: Partial<T> = cloneOf(initialMutations);
-  const computedFields: Record<keyof T, ComputedField<T>> = {
-    ...initialComputedFields,
-  };
+class DominoAPI<T extends DominoValues> {
+  public readonly defaults!: T;
+  public readonly values!: T;
+  public readonly isModified: boolean;
+  public readonly mutations!: Partial<T>;
+  private readonly initialDefaults: T;
 
-  const isModified = Boolean(Object.keys(mutations).length);
+  constructor(defaults: T, mutations: Partial<T> = {}, initialDefaults: T) {
+    this.initialDefaults = cloneOf(initialDefaults);
+    this.defaults = cloneOf(defaults);
+    this.mutations = cloneOf(mutations);
+    this.isModified = Boolean(Object.keys(this.mutations).length);
+    this.values = {
+      ...this.defaults,
+      ...this.mutations,
+    };
+  }
 
-  const initialValues: T = {
-    ...defaults,
-    ...mutations,
-  };
-  const values = {
-    ...initialValues,
-    ...entriesOf(computedFields).reduce(
-      (acc, [key, field]) => {
-        acc[key] = field.compute({
-          defaults,
-          values: initialValues,
-          mutations,
-          isModified,
-        });
-        return acc;
-      },
-      {} as Record<keyof T, T[keyof T]>
-    ),
-  };
-
-  const update = (fields: Partial<T>) => {
-    return createDomino(
-      defaults,
+  public update(fields: Partial<T>) {
+    return new DominoAPI(
+      this.defaults,
       {
-        ...mutations,
+        ...this.mutations,
         ...fields,
       },
-      computedFields
+      this.initialDefaults,
     );
-  };
+  }
 
-  const resetField = (field: keyof T) => {
-    delete mutations[field];
-    return createDomino(defaults, mutations, computedFields);
-  };
+  public resetField(field: keyof T) {
+    delete this.mutations[field];
+    return new DominoAPI(this.defaults, this.mutations, this.initialDefaults);
+  }
 
-  const setDefaults = (newDefaults: Partial<T>) => {
-    return createDomino(
+  public setDefaults(newDefaults: Partial<T>) {
+    return new DominoAPI(
       {
-        ...defaults,
+        ...this.defaults,
         ...newDefaults,
       },
-      mutations,
-      computedFields
+      this.mutations,
+      this.initialDefaults,
     );
-  };
+  }
 
-  const reset = () => {
-    return createDomino(defaults, undefined, computedFields);
-  };
+  public reset() {
+    return new DominoAPI(this.defaults, undefined, this.initialDefaults);
+  }
 
-  const addComputedField = <Key extends keyof T>(
-    key: Key,
-    compute: (args: {
-      defaults: T;
-      values: T;
-      mutations: Partial<T>;
-      isModified: boolean;
-    }) => T[Key],
-    hashFunction: (args: {
-      defaults: T;
-      values: T;
-      mutations: Partial<T>;
-      isModified: boolean;
-    }) => string = defaultHashFunction
-  ) => {
-    const hash = hashFunction({ defaults, values, mutations, isModified });
-    if (key in computedFields && hash === computedFields[key].hash) {
-      return;
-    }
+  public clear() {
+    return new DominoAPI(this.initialDefaults, undefined, this.initialDefaults);
+  }
+}
 
-    return createDomino(defaults, mutations, {
-      ...computedFields,
-      [key]: {
-        hash,
-        compute,
-      },
-    });
-  };
+/**
+ * @description The public Domino object.
+ * @description A Domino's job is to make managing complex state easy.
+ * A Domino's internal state is made up of defaults and mutations.
+ * defaults are exactly what they sound like, the default values of the Domino.
+ * mutations are *only* the values that have been changed from the defaults.
+ * values are the final values of the Domino, computed from the defaults and mutations. */
+class Domino<T extends DominoValues> {
+  private api: DominoAPI<T>;
 
-  return {
-    values,
-    mutations,
-    defaults,
-    computedFields,
-    isModified,
-    update,
-    resetField,
-    setDefaults,
-    reset,
-    addComputedField,
-  };
+  private constructor(api: DominoAPI<T>) {
+    this.api = api;
+  }
+
+  public static from<T extends DominoValues>(defaults: T) {
+    return new Domino(new DominoAPI(defaults, {}, defaults));
+  }
+
+  public get values() {
+    return this.api.values;
+  }
+
+  public get defaults() {
+    return this.api.defaults;
+  }
+
+  public get mutations() {
+    return this.api.mutations;
+  }
+
+  public get isModified() {
+    return this.api.isModified;
+  }
+
+  public update(fields: Partial<T>) {
+    return new Domino(this.api.update(fields));
+  }
+
+  public resetField(field: keyof T) {
+    return new Domino(this.api.resetField(field));
+  }
+
+  public setDefaults(newDefaults: Partial<T>) {
+    return new Domino(this.api.setDefaults(newDefaults));
+  }
+
+  public reset() {
+    return new Domino(this.api.reset());
+  }
+
+  public clear() {
+    return new Domino(this.api.clear());
+  }
+}
+
+export function useDominoState<T extends DominoValues>(
+  defaultState: () => T | T,
+) {
+  const [domino, setDomino] = useState(() => {
+    const domino = Domino.from(
+      typeof defaultState === 'function' ? defaultState() : defaultState,
+    );
+  });
+
+  return createDominoStore({
+    getState: () => domino,
+    setState: (update) => setDomino(update),
+  });
 }
